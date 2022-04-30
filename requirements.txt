@@ -1,2 +1,3 @@
 clipboard
 curses
+art
