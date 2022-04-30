@@ -8,15 +8,20 @@ import datetime
 
 class App:
 
+    global winbuffer
     def __init__(self):
-        self.stdscr = curses.initscr()
+        curses.initscr()
+        self.main_window = self.new_main_window()
         curses.noecho()
         curses.raw()
         curses.curs_set(0)
-        self.stdscr.nodelay(True)
+        self.main_window.nodelay(True)
         curses.start_color()
-        self.stdscr.clear()
+        self.main_window.clear()
         self.ascArtLineLength = 0
+        
+        self.winbuffer = {self.main_window}
+
 
         self.clamp = lambda value, maxV, minV: minV if(value < minV) else maxV if(value > maxV) else value 
 
@@ -29,14 +34,16 @@ class App:
 
         self.ccindex = 1
 
-        self.winbuffer = {self.stdscr}
-
     def add_to_buffer(self, win):
         self.winbuffer.update({win})
 
     def render_all(self):
         for w in self.winbuffer:
             w.noutrefresh()
+
+    def new_main_window(self):
+        main_window = curses.newwin(curses.LINES - 1, curses.COLS, 1, 0)
+        return main_window
 
     def create_menu(self, opts, window, optcount, spacing, deltaX):
 
@@ -74,27 +81,40 @@ class App:
         self.quotewindow.addstr(2, 1, author)
         self.quotewindow.box()
 
+    def ask_filename(self):
+        # TODO: ab hier weitermachen, getch() input aneinander hängen um filename von USER zu kriegen
+
+        pass 
+
 def main(stdscr):
+    stdscr.nodelay(True)
     app = App()
     
+    # TODO: Tagesnamen auf Deutsch übersetzen
     dayAscii = art.text2art(datetime.datetime.now().strftime("%A"))
+    
     sA = dayAscii.splitlines()
     count = 0
-    app.stdscr.attron(curses.color_pair(4) | curses.A_BOLD)
+    app.main_window.attron(curses.color_pair(4) | curses.A_BOLD)
     for line in sA:
         ascArtLineLength = len(line) 
-        app.stdscr.addstr(int((curses.LINES - 16 + (1 * count)) / 2), int(curses.COLS - (curses.COLS / 4) - (len(line) / 2)), line)
+        app.main_window.addstr(int((curses.LINES - 16 + (1 * count)) / 2), int(curses.COLS - (curses.COLS / 4) - (len(line) / 2)), line)
         count += 2
-    app.stdscr.attroff(curses.color_pair(4) | curses.A_BOLD)
+    app.main_window.attroff(curses.color_pair(4) | curses.A_BOLD)
 
     opts = {
         "1": "Neue Datei",
         "2": "Letzte Datei",
         "3": "Ende"
     }
+
+    app.main_window.refresh()
+    app.new_statusbar() # TODO: Uhrzeit oben Rechts, Filename in Mitte, yeah
+    app.new_quoteWindow()
+
     # MAIN LOOP #
     while True:
-        uInput = app.stdscr.getch()
+        uInput = stdscr.getch()
         app.ccindex = app.clamp(app.ccindex, 3, 1)
         if uInput == curses.KEY_F1:
             break
@@ -107,18 +127,19 @@ def main(stdscr):
             if selectedOpt == opts["3"]:
                 exit()
             if selectedOpt == opts["1"]:
+                app.main_window.erase()
                 break
         
-        
-        app.new_statusbar()
-        app.create_menu(opts, app.stdscr, -1, 6, 50)
-        app.new_quoteWindow()
+
+        app.create_menu(opts, app.main_window, -1, 6, 50)
         app.render_all()
         curses.doupdate()
         
-    app.stdscr.nodelay(False)
+    app.main_window.nodelay(False)
     app.render_all()
     curses.doupdate()
+    app.main_window.getch()
+
 
 
 if __name__ == '__main__':
